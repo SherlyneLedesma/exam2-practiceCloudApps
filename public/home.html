@@ -1,19 +1,72 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Bootstrap Home Page</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Management SPA</title>
+    <!-- Keep the local offline stylesheet reference -->
+    <link href="bootstrap.min.css" rel="stylesheet">
 </head>
+<body class="p-4 bg-light">
 
-<body>
-    <h1>Home Page</h1>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
-        crossorigin="anonymous"></script>
+    <!-- Header title from your slide assignment style -->
+    <h2 class="mb-4">Order Management Page</h2>
+
+    <!-- NEW: Simple Add New Order Form Card Panel -->
+        <div class="card-body bg-white">
+            <div id="alert-container"></div>
+            <form id="order-form" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label for="orderDesc" class="form-label small mb-1 fw-bold text-secondary">Order Description</label>
+                    <input type="text" class="form-control form-control-sm" id="orderDesc" placeholder="e.g., Cat7 Ethernet Cable" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="quantity" class="form-label small mb-1 fw-bold text-secondary">Quantity</label>
+                    <input type="number" class="form-control form-control-sm" id="quantity" min="1" value="1" required>
+                </div>
+                <div class="col-md-2">
+                    <label for="unitCost" class="form-label small mb-1 fw-bold text-secondary">Unit Cost ($)</label>
+                    <input type="number" class="form-control form-control-sm" id="unitCost" step="0.01" min="0.00" placeholder="0.00" required>
+                </div>
+                <div class="col-md-3">
+                    <button type="submit" class="btn btn-primary btn-sm w-100">Submit Order</button>
+                </div>
+            </form>
+        </div>
+    
+
+    <!-- Data Table Container Panel -->
+    <div class="card shadow-sm border p-5 bg-white">
+        <!-- Live Action Controls Alignment Row -->
+        <div class="d-flex align-items-center gap-3 mb-4">
+            <button id="refresh-btn" class="btn btn-primary btn-sm">Refresh Orders</button>
+            <small id="timestamp" class="text-muted">Loading timestamp...</small>
+        </div>
+
+        <div class="p-5 bg-white rounded">
+        <!-- Horizontal Data Grid Output Layout -->
+            <div class="table-responsive border rounded">
+                <table class="table table-bordered table-striped table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 10%;">Order ID</th>
+                            <th style="width: 45%;">Description</th>
+                            <th style="width: 15%;" class="text-end">Quantity</th>
+                            <th style="width: 15%;" class="text-end">Unit Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody id="orders-table-body">
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">Click refresh to load orders...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Core Script Application Code Engine Link -->
+    <script src="orders.js"></script>
 </body>
-
 </html>
