@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/UAFS-CSCE41333/exam2-practice#readme",
   "dependencies": {
-    "express": "^5.2.1",
+    "express": "^5.3.0",
     "mysql2": "^3.24.5"
   }
 }

@@ -1,111 +1,143 @@
 const API_URL = '/api/orders';
 
-// Select page element handlers
 const orderForm = document.getElementById('order-form');
 const refreshBtn = document.getElementById('refresh-btn');
 const timestampEl = document.getElementById('timestamp');
 const tableBody = document.getElementById('orders-table-body');
-const alertContainer = document.getElementById('alert-container');
+
+let currentEditId = null;
 
 /**
- * 1. GET Request: Pull data rows and format them downward under the columns
+ * READ ALL: Fetch orders from the server and display them underneath headers
  */
 async function fetchOrders() {
-    try {
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">Loading orders...</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="5" class="text-center">Loading orders...</td></tr>`;
 
+    try {
         const response = await fetch(API_URL);
         const result = await response.json();
-
-        if (!response.ok || !result.success) {
-            throw new Error(result.error || 'Failed to retrieve records');
-        }
-
         const orders = result.data;
-
-        // Set the dynamic live timestamp string matching your classroom slides
+        
         const now = new Date();
-        timestampEl.textContent = `Updated: ${now.toString()}`;
+        timestampEl.textContent = `Updated: ${now.toLocaleTimeString()}`;
+
+        tableBody.innerHTML = '';
 
         if (!orders || orders.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No orders currently active.</td></tr>`;
+            tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-4">No orders found.</td></tr>`;
             return;
         }
 
-        // Output fields horizontally with calculations mapping directly down the rows
-        tableBody.innerHTML = orders.map(order => {
+        // Loop through each order and stack columns downward matching the layout fields
+        orders.forEach(order => {
             const quantity = parseInt(order.quantity) || 0;
-            const unitCost = parseFloat(order.unitCost) || 0.00;
+            const unitCost = parseFloat(order.unitCost) || 0;
 
-            return `
-                <tr>
-                    <td><strong>#${order.orderID}</strong></td>
-                    <td class="text-wrap">${escapeHTML(order.orderDesc)}</td>
-                    <td class="text-end">${quantity}</td>
-                    <td class="text-end">$${unitCost.toFixed(2)}</td>
-                </tr>
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="ps-3"><strong>#${order.orderID}</strong></td>
+                <td>${order.orderDesc}</td>
+                <td class="text-end">${quantity}</td>
+                <td class="text-end">$${unitCost.toFixed(2)}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-warning" id="edit-${order.orderID}">Edit</button>
+                    <button class="btn btn-sm btn-danger" id="delete-${order.orderID}">Delete</button>
+                </td>
             `;
-        }).join('');
+            tableBody.appendChild(row);
+
+            // Button actions setup hooks
+            document.getElementById(`edit-${order.orderID}`).addEventListener('click', () => populateFormForEdit(order));
+            document.getElementById(`delete-${order.orderID}`).addEventListener('click', () => executeDelete(order.orderID));
+        });
 
     } catch (error) {
         console.error('Fetch error:', error);
-        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger py-3"> Error: ${error.message}</td></tr>`;
-        timestampEl.textContent = 'Update tracking failed';
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error loading data.</td></tr>`;
     }
 }
 
 /**
- * 2. POST Request: Submit new input values seamlessly into your database layout
+ * FORM SUBMISSION: Handles both saving a NEW order (POST) or UPDATING an old one (PUT)
  */
-async function handleFormSubmit(event) {
-    event.preventDefault(); // Stop standard hard reloading loops
+orderForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
 
-    const orderDesc = document.getElementById('orderDesc').value.trim();
-    const quantity = parseInt(document.getElementById('quantity').value);
-    const unitCost = parseFloat(document.getElementById('unitCost').value);
+    const orderData = {
+        orderDesc: document.getElementById('orderDesc').value.trim(),
+        quantity: parseInt(document.getElementById('quantity').value, 10),
+        unitCost: parseFloat(document.getElementById('unitCost').value)
+    };
 
     try {
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderDesc, quantity, unitCost }) // Match schema structure exactly
-        });
-
-        const result = await response.json();
-
-        if (response.ok && result.success) {
-            showAlert('Order entry added to system successfully!', 'success');
-            orderForm.reset(); // Clear input elements
-            fetchOrders();     // Reload data matrix seamlessly
+        if (currentEditId === null) {
+            await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+            alert('Order added successfully!');
         } else {
-            throw new Error(result.error || 'API execution context failure');
+            await fetch(`${API_URL}/${currentEditId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(orderData)
+            });
+            alert('Order updated successfully!');
         }
+
+        resetForm();
+        fetchOrders();
+
     } catch (error) {
-        console.error('Submission error:', error);
-        showAlert(error.message, 'danger');
+        console.error('Save error:', error);
+        alert('An error occurred while saving.');
+    }
+});
+
+/**
+ * EDIT SETUP: Populates row values back up into input fields
+ */
+function populateFormForEdit(order) {
+    document.getElementById('orderDesc').value = order.orderDesc;
+    document.getElementById('quantity').value = order.quantity;
+    document.getElementById('unitCost').value = order.unitCost;
+
+    currentEditId = order.orderID;
+
+    const submitBtn = orderForm.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Update Order';
+    submitBtn.className = 'btn btn-warning w-100 py-2 fw-bold text-uppercase mt-2';
+}
+
+/**
+ * DELETE: Remove order completely from tracking
+ */
+async function executeDelete(id) {
+    if (!confirm(`Are you sure you want to delete order #${id}?`)) return;
+
+    try {
+        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        alert('Order deleted.');
+        
+        if (currentEditId === id) resetForm();
+        fetchOrders();
+    } catch (error) {
+        console.error('Delete error:', error);
+        alert('Could not delete the order.');
     }
 }
 
 /**
- * Utility Function: Display status feedback banners on screen safely
+ * UTILITY: Clears inputs and reverts button state back to default
  */
-function showAlert(message, type) {
-    if (!alertContainer) return;
-    alertContainer.innerHTML = `
-        <div class="alert alert-${type} alert-dismissible fade show p-2 small mb-3" role="alert">
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close" style="padding: 0.75rem;"></button>
-        </div>
-    `;
-    setTimeout(() => { alertContainer.innerHTML = ''; }, 4000);
+function resetForm() {
+    orderForm.reset();
+    currentEditId = null;
+    const submitBtn = orderForm.querySelector('button[type="submit"]');
+    submitBtn.textContent = 'Submit Order';
+    submitBtn.className = 'btn btn-success w-100 py-2 fw-bold text-uppercase mt-2';
 }
 
-function escapeHTML(str) {
-    if (!str) return '';
-    return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
-}
-
-// Attach event hooks
-if (orderForm) orderForm.addEventListener('submit', handleFormSubmit);
-if (refreshBtn) refreshBtn.addEventListener('click', fetchOrders);
+refreshBtn.addEventListener('click', fetchOrders);
 document.addEventListener('DOMContentLoaded', fetchOrders);
